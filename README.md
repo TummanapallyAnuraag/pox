@@ -1,3 +1,15 @@
+# eBPF Based Software Router
+
+## CONTROLLER SCRIPTS
+
+> Controller related scripts are in `_controller` folder
+
+## SWITCH SCRIPTS
+
+> Switch related scripts are in `_switch` folder
+
+
+# OLD README (Forked from noxrepo/pox GitHub Repo)
 POX is a networking software platform written in Python
 
 POX started life as an OpenFlow controller, but can now also function
