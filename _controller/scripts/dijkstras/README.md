@@ -20,6 +20,8 @@ python node-plot.py
 
 > `node-plot.py` generates `topo.png` topology picture
 
+> ![Pic of Topology](topo.png)
+
 ## PYTHON DEPENDENCIES
 
 * `networkx`, `os`, `matplotlib`
