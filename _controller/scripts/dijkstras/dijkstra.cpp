@@ -12,6 +12,8 @@ using namespace std;
 #define MAX 10
 #define M 15
 #define N 150
+#define NEIGH_DATA_FLDR "../lsdb-client/data"
+#define OUTPUT_FLDR "routes"
 
 #include "helpers.h"
 
@@ -19,7 +21,7 @@ int main(int argc, char* argv[]){
     struct dirent *de;
     string str;
     char buf[512];
-    DIR *dr = opendir("data");
+    DIR *dr = opendir(NEIGH_DATA_FLDR);
     FILE *fp;
     int G[MAX][MAX], node_count = 0, src_node, dst_node, nhop[MAX];
     map<string, int> node_num;
@@ -30,6 +32,8 @@ int main(int argc, char* argv[]){
         if(strcmp(argv[1], "-d") == 0){
             debug = true;
         }
+    }else{
+        printf("USAGE: ./dijkstra [-d (debug)]\n");
     }
 
     if(dr == NULL){
@@ -51,10 +55,10 @@ int main(int argc, char* argv[]){
             G[i][j] = 0;
         }
     }
-    dr = opendir("data");
+    dr = opendir(NEIGH_DATA_FLDR);
     while( (de = readdir(dr)) != NULL ){
         if( strstr(de->d_name, ".txt") ){
-            sprintf(buf, "data/%s", de->d_name);
+            sprintf(buf, "%s/%s",NEIGH_DATA_FLDR, de->d_name);
             fp = fopen(buf, "r");
             if(fp){
                 str.assign(de->d_name, 0, strrchr(de->d_name, '.') - de->d_name);
@@ -75,7 +79,7 @@ int main(int argc, char* argv[]){
     }
     for(int start = 0; start < node_count; start++){
         dijkstra(G, node_count, start, nhop);
-        sprintf(buf, "routes/%s.txt", node_ip_str[start].c_str());
+        sprintf(buf, "%s/%s.txt", OUTPUT_FLDR, node_ip_str[start].c_str());
         fp = fopen(buf, "w");
         debug && printf("\nsrc: %s\n", node_ip_str[start].c_str());
         for(int node = 0; node < node_count; node++){
