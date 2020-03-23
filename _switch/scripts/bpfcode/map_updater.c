@@ -23,14 +23,71 @@
 
 const char *pin_dir =  "/sys/fs/bpf/ovs-router";
 
-int main(int argc, char **argv){
-	struct bpf_map_info info = { 0 };
-	int map_fd = open_bpf_map_file(pin_dir, "counter", &info);
-	if (map_fd < 0)
-		return EXIT_FAIL_BPF;
-	printf("%d\n", map_fd);
-	int key = 0, val = 0;
-	bpf_map_update_elem(map_fd, &key, &val, 0);
+struct lpm_val {
+	__u8 flags;
+};
 
+int main(int argc, char **argv){
+	if(argc < 4){
+		printf("Usage: ./map_updater <mapname> <insert/update/delete/lookup> <key> [val]\n");\
+		return 0;
+	}
+
+	struct bpf_map_info info = { 0 };
+	int map_fd = open_bpf_map_file(pin_dir, argv[1], &info);
+	if (map_fd < 0) return EXIT_FAIL_BPF;
+
+	if(strcmp(argv[1], "counter") == 0 || strcmp(argv[1], "tx_port") == 0){
+		int key, val;
+		key = atoi(argv[3]);
+		switch (argv[2][0]){
+			case 'i':
+			case 'u':
+				if(argc != 5) return -1;
+				val = atoi(argv[4]);
+				bpf_map_update_elem(map_fd, &key, &val, 0);
+				break;
+			case 'd':
+				bpf_map_delete_elem(map_fd, &key);
+				break;
+			case 'l':
+				bpf_map_lookup_elem(map_fd, &key, &val);
+				printf("value: %d\n", val);
+				break;
+		}
+		val = key;
+		key = val;
+	}else{
+		union {
+			__u32 b32[2];
+			__u8 b8[8];
+		} key4;
+		struct lpm_val val;
+		char *ip_addr, *prefix;
+		ip_addr = strtok(argv[3], "/");
+		if(ip_addr != NULL)
+			prefix = strtok(NULL, "/");
+		key4.b32[0] = atoi(prefix);
+		key4.b8[4] = atoi( strtok(ip_addr, ".") );
+		key4.b8[5] = atoi( strtok(NULL, ".") );
+		key4.b8[6] = atoi( strtok(NULL, ".") );
+		key4.b8[7] = atoi( strtok(NULL, ".") );
+
+		switch (argv[2][0]){
+			case 'i':
+			case 'u':
+				if(argc != 5) return -1;
+				val.flags = atoi(argv[4]);
+				bpf_map_update_elem(map_fd, &key4, &val, 0);
+				break;
+			case 'd':
+				bpf_map_delete_elem(map_fd, &key4);
+				break;
+			case 'l':
+				bpf_map_lookup_elem(map_fd, &key4, &val);
+				printf("value: %d\n", val.flags);
+				break;
+		}
+	}
 	return 0;
 }
