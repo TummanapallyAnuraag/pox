@@ -55,8 +55,30 @@ int main(int argc, char **argv){
 				printf("value: %d\n", val);
 				break;
 		}
-		val = key;
-		key = val;
+	}else if(strcmp(argv[1], "sw_nics") == 0){
+		int key;
+		__u8 val[6];
+		key = atoi(argv[3]);
+		switch (argv[2][0]){
+			case 'i':
+			case 'u':
+				if(argc != 5) return -1;
+				val[0] = atoi(strtok(argv[4], ":") );
+				val[1] = atoi(strtok(NULL, ":") );
+				val[2] = atoi(strtok(NULL, ":") );
+				val[3] = atoi(strtok(NULL, ":") );
+				val[4] = atoi(strtok(NULL, ":") );
+				val[5] = atoi(strtok(NULL, ":") );
+				bpf_map_update_elem(map_fd, &key, &val[0], 0);
+				break;
+			case 'd':
+				bpf_map_delete_elem(map_fd, &key);
+				break;
+			case 'l':
+				bpf_map_lookup_elem(map_fd, &key, &val[0]);
+				printf("value: %02x:%02x:%02x : %02x:%02x:%02x\n", val[0], val[1], val[2], val[3], val[4], val[5]);
+				break;
+		}
 	}else{
 		union {
 			__u32 b32[2];

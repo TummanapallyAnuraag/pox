@@ -35,10 +35,12 @@ struct bpf_map_def SEC("maps") tx_port = {
 	.max_entries = 10,
 };
 
-// struct lpm_v4_key {
-//     struct bpf_lpm_trie_key lpm;
-//     __u8 addr[4];
-// };
+struct bpf_map_def SEC("maps") sw_nics = {
+	.type = BPF_MAP_TYPE_ARRAY,
+	.key_size = sizeof(int),	// iface number.
+	.value_size = 6,	// dev mac address
+	.max_entries = 10,
+};
 
 struct lpm_val {
 	__u8 flags;
@@ -66,12 +68,12 @@ int  xdp_pass_func(struct xdp_md *ctx)
 		return XDP_PASS;
 
 	/* Update Counter for each packet recieved */
-	bpf_printk("packet received ..\n");
     int int_key = 0;
     int *int_val;
     int_val = bpf_map_lookup_elem(&counter, &int_key);
-    if(int_val)
+    if(int_val){
         (*int_val)++;
+	}
 
 	/* All Non-IP Packets go through normal system functionality */
 	if (eth->h_proto != __constant_htons(ETH_P_IP))
@@ -84,18 +86,11 @@ int  xdp_pass_func(struct xdp_md *ctx)
 
 	__u32 dst_ip = ip->daddr;
 
-    // struct lpm_v4_key key;
 	union {
 		__u32 b32[2];
 		__u8 b8[8];
 	} key4;
     struct lpm_val *val = NULL;
-
-    // key.lpm.prefixlen = 32;
-    // key.addr[0] = dst_ip & 0xFF;
-    // key.addr[1] = (dst_ip >> 8) & 0xFF;
-    // key.addr[2] = (dst_ip >> 16) & 0xFF;
-    // key.addr[3] = (dst_ip >> 24) & 0xFF;
 
 	key4.b32[0] = 32;
 	key4.b8[4] = dst_ip & 0xff;
@@ -103,17 +98,50 @@ int  xdp_pass_func(struct xdp_md *ctx)
 	key4.b8[6] = (dst_ip >> 16) & 0xff;
 	key4.b8[7] = (dst_ip >> 24) & 0xff;
 
-    // bpf_printk("ip[0]: %d\n", key.addr[0]);
-    // bpf_printk("ip[1]: %d\n", key.addr[1]);
-    // bpf_printk("ip[2]: %d\n", key.addr[2]);
-    // bpf_printk("ip[3]: %d\n", key.addr[3]);
-
 	// search the LPM_TRIE
     val = bpf_map_lookup_elem(&routes, &key4);
-    if(val)
-        bpf_printk("TRIE hit!, output=%d\n", val->flags);
-    else
-		bpf_printk("TRIE miss!\n");
+    if(val){
+		bpf_printk("TRIE hit!, output=%d\n", val->flags);
+		int ifaceno = 3;
+		__u8 *srcmac_addr;
+		srcmac_addr = bpf_map_lookup_elem(&sw_nics, &ifaceno);
+		if(srcmac_addr){
+			char buffer[30];
+			int run = 0;
+			/*
+			Unroll the loop, and convert MAC address from array to string:
+			https://stackoverflow.com/questions/56107380/is-loops-allowed-in-ebpf-kernel-program
+			PS: sprintf couldn't be used in kernel..so this work around
+			 */
+			#pragma clang loop unroll(full)
+			for(int p = 0; p < 6; p++){
+				if( (srcmac_addr[p]>>4) > 9  ){
+					buffer[run] = (srcmac_addr[p]>>4) - 10 + 'A';
+				}else{
+					buffer[run] = (srcmac_addr[p]>>4) + '0';
+				}
+				run++;
+				if( (srcmac_addr[p]&0x0f) > 9  ){
+					buffer[run] = (srcmac_addr[p]&0x0f) - 10 + 'A';
+				}else{
+					buffer[run] = (srcmac_addr[p]&0x0f) + '0';
+				}
+				if(p != 5){
+					run++;
+					buffer[run] = ':';
+				}
+				run++;
+			}
+			buffer[run] = 0;
+			bpf_printk("Iface MAC Addr: %s\n", buffer);
+		}
+	}else{
+		bpf_printk("TRIE miss for..\n");
+		bpf_printk("%d\n", key4.b8[4]);
+	    bpf_printk("%d\n", key4.b8[5]);
+	    bpf_printk("%d\n", key4.b8[6]);
+	    bpf_printk("%d\n", key4.b8[7]);
+	}
 
 	/*
 	2: enp2s0
