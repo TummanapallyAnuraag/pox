@@ -43,7 +43,8 @@ struct bpf_map_def SEC("maps") sw_nics = {
 };
 
 struct lpm_val {
-	__u8 flags;
+	__u8 dst_mac[6];
+	__u8 out_of_port;	// output openflow port 
 };
 
 
@@ -101,7 +102,7 @@ int  xdp_pass_func(struct xdp_md *ctx)
 	// search the LPM_TRIE
     val = bpf_map_lookup_elem(&routes, &key4);
     if(val){
-		bpf_printk("TRIE hit!, output=%d\n", val->flags);
+		bpf_printk("TRIE hit!, output=%d\n", val->out_of_port);
 		int ifaceno = 3;
 		__u8 *srcmac_addr;
 		srcmac_addr = bpf_map_lookup_elem(&sw_nics, &ifaceno);

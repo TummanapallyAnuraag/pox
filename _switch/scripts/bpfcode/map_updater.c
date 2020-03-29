@@ -24,7 +24,8 @@
 const char *pin_dir =  "/sys/fs/bpf/ovs-router";
 
 struct lpm_val {
-	__u8 flags;
+	__u8 dst_mac[6];
+	__u8 out_of_port;	// output openflow port
 };
 
 int main(int argc, char **argv){
@@ -63,12 +64,14 @@ int main(int argc, char **argv){
 			case 'i':
 			case 'u':
 				if(argc != 5) return -1;
-				val[0] = atoi(strtok(argv[4], ":") );
-				val[1] = atoi(strtok(NULL, ":") );
-				val[2] = atoi(strtok(NULL, ":") );
-				val[3] = atoi(strtok(NULL, ":") );
-				val[4] = atoi(strtok(NULL, ":") );
-				val[5] = atoi(strtok(NULL, ":") );
+				val[0] = (int)strtol( strtok(argv[4], ":") , NULL, 16);
+				val[1] = (int)strtol( strtok(NULL, ":") , NULL, 16);
+				val[2] = (int)strtol( strtok(NULL, ":") , NULL, 16);
+
+				val[3] = (int)strtol( strtok(NULL, ":") , NULL, 16);
+				val[4] = (int)strtol( strtok(NULL, ":") , NULL, 16);
+				val[5] = (int)strtol( strtok(NULL, ":") , NULL, 16);
+
 				bpf_map_update_elem(map_fd, &key, &val[0], 0);
 				break;
 			case 'd':
@@ -85,7 +88,7 @@ int main(int argc, char **argv){
 			__u8 b8[8];
 		} key4;
 		struct lpm_val val;
-		char *ip_addr, *prefix;
+		char *ip_addr, *prefix, *dst_mac, *out_of_port_str;
 		ip_addr = strtok(argv[3], "/");
 		if(ip_addr != NULL)
 			prefix = strtok(NULL, "/");
@@ -94,12 +97,25 @@ int main(int argc, char **argv){
 		key4.b8[5] = atoi( strtok(NULL, ".") );
 		key4.b8[6] = atoi( strtok(NULL, ".") );
 		key4.b8[7] = atoi( strtok(NULL, ".") );
+		if(argc >= 5 && argv[2][0] != 'l'){
+			dst_mac = strtok(argv[4], "/");
+			if(dst_mac != NULL){
+				out_of_port_str = strtok(NULL, "/");
+				val.out_of_port = atoi(out_of_port_str);
+			}
+			val.dst_mac[0] = (int)strtol( strtok(dst_mac, ":") , NULL, 16);
+			val.dst_mac[1] = (int)strtol( strtok(NULL, ":") , NULL, 16);
+			val.dst_mac[2] = (int)strtol( strtok(NULL, ":") , NULL, 16);
+
+			val.dst_mac[3] = (int)strtol( strtok(NULL, ":") , NULL, 16);
+			val.dst_mac[4] = (int)strtol( strtok(NULL, ":") , NULL, 16);
+			val.dst_mac[5] = (int)strtol( strtok(NULL, ":") , NULL, 16);
+		}
 
 		switch (argv[2][0]){
 			case 'i':
 			case 'u':
 				if(argc != 5) return -1;
-				val.flags = atoi(argv[4]);
 				bpf_map_update_elem(map_fd, &key4, &val, 0);
 				break;
 			case 'd':
@@ -107,7 +123,8 @@ int main(int argc, char **argv){
 				break;
 			case 'l':
 				bpf_map_lookup_elem(map_fd, &key4, &val);
-				printf("value: %d\n", val.flags);
+				printf("val.dst_mac: %02x:%02x:%02x : %02x:%02x:%02x\n", val.dst_mac[0], val.dst_mac[1], val.dst_mac[2], val.dst_mac[3], val.dst_mac[4], val.dst_mac[5]);
+				printf("val.out_of_port: %d\n", val.out_of_port);
 				break;
 		}
 	}
