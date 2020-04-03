@@ -110,15 +110,15 @@ sudo bpftool map lookup pinned /sys/fs/bpf/ovs-router/routes key 16 0 0 0 192 16
 > val - `__u8[6]`
 
 ```
-sudo ./map_updater routes update 3 01:02:03:a1:b2:c3
-sudo ./map_updater routes delete 3
-sudo ./map_updater routes lookup 3
+sudo ./map_updater sw_nics update 3 01:02:03:a1:b2:c3
+sudo ./map_updater sw_nics delete 3
+sudo ./map_updater sw_nics lookup 3
 
-sudo bpftool map update pinned /sys/fs/bpf/ovs-router/routes key 3 0 0 0 val 0x01 0x02 0x03 0xa1 0xb2 0xc3
+sudo bpftool map update pinned /sys/fs/bpf/ovs-router/sw_nics key 3 0 0 0 val 0x01 0x02 0x03 0xa1 0xb2 0xc3
 
-sudo bpftool map delete pinned /sys/fs/bpf/ovs-router/routes key 3 0 0 0
+sudo bpftool map delete pinned /sys/fs/bpf/ovs-router/sw_nics key 3 0 0 0
 
-sudo bpftool map lookup pinned /sys/fs/bpf/ovs-router/routes key 3 0 0 0
+sudo bpftool map lookup pinned /sys/fs/bpf/ovs-router/sw_nics key 3 0 0 0
 ```
 
 ## Compilation
